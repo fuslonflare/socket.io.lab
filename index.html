@@ -1,0 +1,112 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>Socket.IO chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font: 13px Helvetica, Arial;
+        }
+
+        form {
+            background: #000;
+            padding: 3px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+
+        form input {
+            border: 0;
+            padding: 10px;
+            width: 90%;
+            margin-right: 0.5%;
+        }
+
+        form button {
+            width: 9%;
+            background: rgb(130, 224, 255);
+            border: none;
+            padding: 10px;
+        }
+
+        #messages {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            height: 90%;
+        }
+
+        #messages li {
+            padding: 5px 10px;
+        }
+
+        #messages li:nth-child(odd) {
+            background: #eee;
+        }
+
+        #chat {
+            overflow: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="welcome">
+        <form id="welcome-panel">
+            <input id="username" autocomplete="off" placeholder="Enter username" /><button>OK</button>
+        </form>
+    </div>
+    <div id="chat">
+        <ul id="messages"></ul>
+        <form id="chat-panel">
+            <input id="text" autocomplete="off" placeholder="Enter message" /><button>Send</button>
+        </form>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script>
+        var socket = io();
+        $('#chat').hide();
+        $('#welcome').show();
+
+        $('#welcome-panel').submit(function (e) {
+            e.preventDefault();
+            console.log($("#username").val());
+            socket.emit('setUsername', $("#username").val());
+        });
+
+        $('#chat-panel').submit((e) => {
+            e.preventDefault();
+            console.log($("#text").val());
+            socket.emit('chat message', $("#text").val());
+        });
+
+        socket.on('validateUsername', (response) => {
+            console.log(new Date().toISOString() + ' : [' + socket.id + ' <- server] : validateUsername : ' + JSON.stringify(response));
+            if (response.isSuccess) {
+                $('#chat').show();
+                $('#welcome').hide();
+            }
+            else {
+                $('#username').val('');
+                alert(response.message);
+            }
+        });
+
+        socket.on('messages', (message) => {
+            console.log(new Date().toISOString() + ' : [' + socket.id + ' <- server] : messages : ' + message);
+            $('#messages').append(message);
+        });
+
+    </script>
+</body>
+
+</html>
