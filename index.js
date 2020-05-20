@@ -1,47 +1,43 @@
-var app = require('express')();
-var http = require('http').createServer(app);
-var io = require('socket.io')(http);
-var _ = require('lodash');
+let app = require('express')()
+let http = require('http').createServer(app)
+let io = require('socket.io')(http)
+let _ = require('lodash')
+
+const event2 = 'logout_other_sessions'
+const event3 = 'force_logout'
 
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html');
-});
+    res.send('<p>socket.io : Welcome welcome speech 🤤🤤<p>')
+})
 
-var idToUsernames = [];
+let userInfos = []
 io.on('connection', (socket) => {
-    console.log(new Date().toISOString() + ' : [' + socket.id + ' -> server] : on connection');
-    idToUsernames.push({ id: socket.id, username: null });
+    console.log(`${new Date().toISOString()} : [${socket.id} -> server] : on connection`)
+    userInfos.push({ id: socket.id, username: null, uuid: null })
 
     socket.on('disconnect', () => {
-        console.log(new Date().toISOString() + ' : [' + socket.id + ' -> server] : on disconnect');
-        var item = _.find(idToUsernames, { id: socket.id });
-        var username = { ...item }.username;
-        if (item) {
-            var username = { ...item }.username;
-            _.remove(idToUsernames, { id: socket.id });
-            if (username) io.emit('messages', '<li><b>ประกาศ 📢:</b> ' + item.username + ' ออกจากการสนทนาไปแล้ว, จำนวนผู้สนทนาทั้งหมด ' + _.filter(idToUsernames, x => x.username).length + ' ท่าน');
+        console.log(`${new Date().toISOString()} : [${socket.id} -> server] : on disconnect`)
+        let username = _.find(userInfos, { id: socket.id })
+        socket.leave(username)
+        _.remove(userInfos, (e) => {
+            return e.id == socket.id
+        })
+        console.log(`userInfos = ${userInfos}`)
+    })
+
+    socket.on(event2, (msg) => {
+        console.log(`${new Date().toISOString()} : [${socket.id} -> server] : ${event2} : ${JSON.stringify(msg)}`)
+        let info = _.find(userInfos, { id: socket.id })
+        if (info) {
+            info.username = msg.username
+            info.uuid = msg.uuid
         }
-    });
+        socket.join(msg.username)
+        socket.to(msg.username).emit(event3)
+        console.log(`userInfos = ${JSON.stringify(userInfos)}`)
+    })
+})
 
-    socket.on('chat message', (msg) => {
-        console.log(new Date().toISOString() + ' : [' + socket.id + ' -> server] : chat message : ' + msg);
-        io.emit('messages', '<li><b>' + _.find(idToUsernames, { id: socket.id }).username + ': </b>' + msg);
-    });
-
-    socket.on('setUsername', (username) => {
-        console.log(new Date().toISOString() + ' : [' + socket.id + ' -> server] : setUsername : ' + username);
-        var index = _.findIndex(idToUsernames, { username: username });
-        if (index >= 0) socket.emit('validateUsername', { isSuccess: false, message: 'มีผู้ใช้ชื่อ ' + username + ' แล้ว กรุณาตั้งชื่อใหม่' });
-        else {
-            var item = _.find(idToUsernames, { id: socket.id });
-            item.username = username;
-            socket.emit('validateUsername', { isSuccess: true, message: username });
-            console.log('[array-tag] idToUsernames =', idToUsernames);
-            io.emit('messages', '<li><b>ประกาศ 📢:</b> ' + username + ' เข้าร่วมการสนทนาแล้ว, จำนวนผู้สนทนาทั้งหมด ' + _.filter(idToUsernames, x => x.username).length + ' ท่าน');
-        }
-    });
-});
-
-http.listen(3000, () => {
-    console.log(new Date().toISOString() + ' : listening on *:3000');
-});
+http.listen(4000, () => {
+    console.log(new Date().toISOString() + ' : listening on *:4000')
+})
